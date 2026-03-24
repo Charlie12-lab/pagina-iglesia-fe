@@ -1,26 +1,65 @@
+@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Fraunces:ital,wght@0,600;1,400;1,600&display=swap');
 @import "tailwindcss";
 
+:root {
+  --bondi: #0098A6;
+  --bondi-dark: #00818C;
+  --bondi-deeper: #006B75;
+  --bondi-light: #00B5C5;
+  --bondi-pale: #E6F7F8;
+  --bondi-mist: #F0FAFB;
+  --cream: #FAF8F4;
+  --cream-warm: #F5F0E8;
+  --cream-border: #EDE8DF;
+  --gray-100: #EFEFEF;
+  --gray-200: #E2E2E2;
+  --gray-400: #ABABAB;
+  --gray-600: #5C5C5C;
+  --gray-900: #1A1A1A;
+  --amber: #E8A020;
+  --amber-light: #F2B84B;
+  --amber-pale: #FEF5E0;
+  --white: #FFFFFF;
+  --text: #1A1A1A;
+  --text-mid: #444444;
+  --text-light: #777777;
+}
+
 @layer base {
-  * {
-    box-sizing: border-box;
-  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
-    margin: 0;
-    font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+    background: var(--cream);
+    color: var(--text);
+    font-size: 15px;
+    line-height: 1.6;
     -webkit-font-smoothing: antialiased;
   }
 }
 
+/* Hero carousel */
+.hero-slides-wrapper {
+  overflow: hidden;
+  width: 100%;
+  height: 100%;
+}
+.hero-slides {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.hero-slide {
+  min-width: 100%;
+  height: 100%;
+  position: relative;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+}
+
 /* React Big Calendar custom styles */
-.rbc-calendar {
-  @apply font-sans;
-}
-.rbc-toolbar button {
-  @apply cursor-pointer;
-}
-.rbc-event {
-  @apply bg-indigo-600 border-0 rounded text-xs;
-}
-.rbc-today {
-  @apply bg-indigo-50;
-}
+.rbc-calendar { font-family: 'Plus Jakarta Sans', system-ui, sans-serif; }
+.rbc-toolbar button { cursor: pointer; }
+.rbc-event { background: var(--bondi) !important; border: 0 !important; border-radius: 4px; font-size: 12px; }
+.rbc-today { background: var(--bondi-pale) !important; }

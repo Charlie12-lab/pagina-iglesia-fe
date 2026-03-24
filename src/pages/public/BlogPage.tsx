@@ -3,7 +3,15 @@ import { Link } from 'react-router-dom';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { blogsApi } from '../../api/blogs';
-import { BookOpen, User, Calendar, Tag } from 'lucide-react';
+
+const BLOG_GRADIENTS = [
+  'linear-gradient(135deg,#005F6B,#0098A6)',
+  'linear-gradient(135deg,#006B75,#00B5C5)',
+  'linear-gradient(135deg,#004A52,#007A85)',
+  'linear-gradient(135deg,#00818C,#33C4D0)',
+  'linear-gradient(135deg,#003D45,#006B75)',
+  'linear-gradient(135deg,#007880,#00A8B5)',
+];
 
 export default function BlogPage() {
   const { data: posts = [], isLoading } = useQuery({
@@ -12,77 +20,104 @@ export default function BlogPage() {
   });
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-10">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-indigo-800">Blog</h1>
-        <p className="text-gray-600 mt-2">Mensajes, reflexiones y noticias de nuestras comunidades.</p>
-      </div>
-
-      {isLoading && (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="bg-white rounded-xl p-6 shadow animate-pulse h-64" />
-          ))}
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {posts.map(post => (
-          <Link
-            key={post.id}
-            to={`/blog/${post.id}`}
-            className="bg-white rounded-xl shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 overflow-hidden flex flex-col"
-          >
-            {post.coverImageUrl ? (
-              <img src={post.coverImageUrl} alt={post.title}
-                className="w-full h-44 object-cover" />
-            ) : (
-              <div className="w-full h-44 bg-indigo-50 flex items-center justify-center">
-                <BookOpen size={40} className="text-indigo-200" />
-              </div>
-            )}
-
-            <div className="p-5 flex flex-col flex-1">
-              <p className="text-indigo-600 text-xs font-semibold mb-1">{post.churchName}</p>
-              <h2 className="text-lg font-bold text-gray-900 mb-2 line-clamp-2">{post.title}</h2>
-
-              {post.excerpt && (
-                <p className="text-gray-600 text-sm line-clamp-3 flex-1 mb-3">{post.excerpt}</p>
-              )}
-
-              <div className="mt-auto space-y-1.5 text-xs text-gray-400">
-                <div className="flex items-center gap-1.5">
-                  <User size={12} />
-                  <span>{post.author}</span>
-                </div>
-                {post.publishedAt && (
-                  <div className="flex items-center gap-1.5">
-                    <Calendar size={12} />
-                    <span>{format(new Date(post.publishedAt), "dd 'de' MMMM, yyyy", { locale: es })}</span>
-                  </div>
-                )}
-                {post.tags.length > 0 && (
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    <Tag size={12} />
-                    {post.tags.slice(0, 3).map(tag => (
-                      <span key={tag} className="bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded text-xs">
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
+    <div style={{ background: 'var(--cream)', minHeight: '100vh' }}>
+      {/* Header */}
+      <div style={{ background: 'var(--white)', borderBottom: '1px solid var(--gray-200)', padding: '40px 44px 32px' }}>
+        <div style={{ maxWidth: '1120px', margin: '0 auto' }}>
+          <div style={{ fontSize: '10.5px', fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase', color: 'var(--bondi)', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '7px' }}>
+            <span style={{ width: '16px', height: '2px', background: 'var(--amber)', borderRadius: '2px', display: 'inline-block' }} />
+            Comunidad
+          </div>
+          <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: '20px' }}>
+            <div>
+              <h1 style={{ fontFamily: "'Fraunces', serif", fontSize: '36px', fontWeight: 600, color: 'var(--text)', lineHeight: 1.2, marginBottom: '8px' }}>Blog</h1>
+              <p style={{ fontSize: '13.5px', color: 'var(--text-light)' }}>
+                {isLoading ? 'Cargando…' : `${posts.length} ${posts.length === 1 ? 'publicación' : 'publicaciones'}`}
+              </p>
             </div>
-          </Link>
-        ))}
+            <Link to="/" style={{ fontSize: '12px', fontWeight: 600, color: 'var(--text-mid)', textDecoration: 'none', border: '1.5px solid var(--gray-200)', padding: '7px 15px', borderRadius: '7px', whiteSpace: 'nowrap' }}>
+              ← Volver al inicio
+            </Link>
+          </div>
+        </div>
       </div>
 
-      {!isLoading && posts.length === 0 && (
-        <div className="text-center py-16 text-gray-500">
-          <BookOpen size={48} className="mx-auto mb-3 text-gray-300" />
-          <p>No hay publicaciones aún.</p>
-        </div>
-      )}
+      {/* Grid */}
+      <div style={{ maxWidth: '1120px', margin: '0 auto', padding: '40px 44px' }}>
+        {isLoading ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '18px' }}>
+            {[...Array(6)].map((_, i) => (
+              <div key={i} style={{ background: 'var(--white)', borderRadius: '14px', height: '320px', opacity: 0.6 }} />
+            ))}
+          </div>
+        ) : posts.length > 0 ? (
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '18px' }}>
+            {posts.map((post, i) => {
+              const grad = BLOG_GRADIENTS[i % BLOG_GRADIENTS.length];
+              return (
+                <Link
+                  key={post.id}
+                  to={`/blog/${post.id}`}
+                  style={{ background: 'var(--white)', border: '1px solid var(--cream-border)', borderRadius: '14px', overflow: 'hidden', cursor: 'pointer', transition: 'transform 0.15s, box-shadow 0.15s', textDecoration: 'none', display: 'flex', flexDirection: 'column' }}
+                  onMouseEnter={e => { const el = e.currentTarget; el.style.transform = 'translateY(-3px)'; el.style.boxShadow = '0 12px 30px rgba(0,0,0,0.08)'; }}
+                  onMouseLeave={e => { const el = e.currentTarget; el.style.transform = ''; el.style.boxShadow = ''; }}
+                >
+                  {/* Image */}
+                  <div style={{ background: post.coverImageUrl ? undefined : grad, height: '160px', position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    {post.coverImageUrl
+                      ? <img src={post.coverImageUrl} alt={post.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : <>
+                          <div style={{ position: 'absolute', inset: 0, backgroundImage: 'radial-gradient(rgba(255,255,255,0.07) 1px,transparent 1px)', backgroundSize: '18px 18px' }} />
+                          <svg width="40" height="40" viewBox="0 0 40 40" fill="none" style={{ position: 'relative', zIndex: 1 }}>
+                            <rect x="6" y="5" width="28" height="30" rx="3" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" fill="none"/>
+                            <path d="M12 15H28M12 20H28M12 25H20" stroke="rgba(255,255,255,0.5)" strokeWidth="1.4" strokeLinecap="round"/>
+                          </svg>
+                        </>
+                    }
+                  </div>
+
+                  {/* Body */}
+                  <div style={{ padding: '18px', flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    {post.tags.length > 0 && (
+                      <span style={{ display: 'inline-block', fontSize: '9.5px', fontWeight: 700, letterSpacing: '1px', textTransform: 'uppercase', borderRadius: '20px', padding: '2px 9px', marginBottom: '9px', background: 'var(--bondi-pale)', color: 'var(--bondi-dark)' }}>
+                        {post.tags[0]}
+                      </span>
+                    )}
+                    <h2 style={{ fontFamily: "'Fraunces', serif", fontSize: '17px', fontWeight: 600, color: 'var(--text)', marginBottom: '7px', lineHeight: 1.35 }}>
+                      {post.title}
+                    </h2>
+                    {post.excerpt && (
+                      <p style={{ fontSize: '12.5px', color: 'var(--text-light)', lineHeight: 1.65, marginBottom: '12px', flex: 1, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                        {post.excerpt}
+                      </p>
+                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-light)', borderTop: '1px solid var(--gray-100)', paddingTop: '11px', marginTop: 'auto' }}>
+                      <div>
+                        <div style={{ fontWeight: 600, color: 'var(--bondi)', marginBottom: '2px' }}>{post.churchName}</div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                          <span>{post.author}</span>
+                          {post.publishedAt && (
+                            <>
+                              <span>·</span>
+                              <span>{format(new Date(post.publishedAt), "d MMM yyyy", { locale: es })}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                      <span style={{ fontSize: '11.5px', fontWeight: 700, color: 'var(--bondi)', whiteSpace: 'nowrap' }}>Leer →</span>
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
+          </div>
+        ) : (
+          <div style={{ textAlign: 'center', padding: '80px 20px' }}>
+            <div style={{ fontSize: '48px', marginBottom: '16px' }}>📖</div>
+            <p style={{ fontSize: '16px', color: 'var(--text-light)', fontWeight: 500 }}>No hay publicaciones aún.</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
