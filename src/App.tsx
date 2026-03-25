@@ -10,6 +10,8 @@ import HomePage from './pages/public/HomePage';
 import ChurchesPage from './pages/public/ChurchesPage';
 import BlogPage from './pages/public/BlogPage';
 import BlogDetailPage from './pages/public/BlogDetailPage';
+import EventsPage from './pages/public/EventsPage';
+import EventDetailPage from './pages/public/EventDetailPage';
 
 // Admin pages
 import LoginPage from './pages/admin/LoginPage';
@@ -35,6 +37,8 @@ export default function App() {
             <Route path="/iglesias" element={<ChurchesPage />} />
             <Route path="/blog" element={<BlogPage />} />
             <Route path="/blog/:id" element={<BlogDetailPage />} />
+            <Route path="/eventos" element={<EventsPage />} />
+            <Route path="/eventos/:id" element={<EventDetailPage />} />
           </Route>
 
           {/* Admin login */}

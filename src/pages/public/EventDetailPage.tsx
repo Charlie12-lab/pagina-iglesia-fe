@@ -1,50 +1,70 @@
 import { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useMutation } from '@tanstack/react-query';
 import { eventsApi } from '../../api/events';
-import type { Event, EventRegistrationRequest } from '../../types';
-import './EventModal.css';
+import type { EventRegistrationRequest } from '../../types';
+import '../../components/ui/EventModal.css';
 
-interface Props {
-  event: Event;
-  onClose: () => void;
-}
+export default function EventDetailPage() {
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
 
-export default function EventModal({ event, onClose }: Props) {
   const [showForm, setShowForm] = useState(false);
   const [registered, setRegistered] = useState(false);
   const [form, setForm] = useState<EventRegistrationRequest>({
     fullName: '', email: '', phone: '', notes: '',
   });
 
+  const { data: event, isLoading, isError } = useQuery({
+    queryKey: ['event', id],
+    queryFn: () => eventsApi.getById(Number(id)),
+    enabled: !!id,
+  });
+
   const { mutate: register, isPending } = useMutation({
-    mutationFn: () => eventsApi.register(event.id, form),
+    mutationFn: () => eventsApi.register(Number(id), form),
     onSuccess: () => { setRegistered(true); setShowForm(false); },
   });
 
-  const spotsLeft = event.maxAttendees
-    ? event.maxAttendees - event.currentAttendees
-    : null;
-  const occupancy = event.maxAttendees
-    ? Math.round((event.currentAttendees / event.maxAttendees) * 100)
-    : 0;
-  const isFull = spotsLeft !== null && spotsLeft <= 0;
+  if (isLoading) {
+    return (
+      <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: "'Plus Jakarta Sans', sans-serif", color: '#777' }}>
+        Cargando evento...
+      </div>
+    );
+  }
+
+  if (isError || !event) {
+    return (
+      <div style={{ minHeight: '60vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', fontFamily: "'Plus Jakarta Sans', sans-serif", color: '#777', gap: '12px' }}>
+        <p>Evento no encontrado.</p>
+        <button onClick={() => navigate('/eventos')}
+          style={{ background: '#0098A6', color: 'white', border: 'none', borderRadius: '8px', padding: '10px 20px', cursor: 'pointer', fontWeight: 700 }}>
+          Volver a eventos
+        </button>
+      </div>
+    );
+  }
 
   const startDate = new Date(event.startDate);
   const endDate = event.endDate ? new Date(event.endDate) : null;
+  const spotsLeft = event.maxAttendees ? event.maxAttendees - event.currentAttendees : null;
+  const occupancy = event.maxAttendees ? Math.round((event.currentAttendees / event.maxAttendees) * 100) : 0;
+  const isFull = spotsLeft !== null && spotsLeft <= 0;
 
   const formattedDate = endDate
     ? `${format(startDate, "EEE d MMM", { locale: es })} – ${format(endDate, "EEE d MMM, yyyy", { locale: es })}`
     : format(startDate, "EEEE d 'de' MMMM, yyyy", { locale: es });
 
-  const formattedTime = format(startDate, "HH:mm 'hrs'");
-
   return (
-    <div className="em-root">
+    /* Reuse EventModal styles but as a page (no fixed overlay) */
+    <div style={{ background: 'var(--cream, #FAF8F4)', minHeight: '100vh', fontFamily: "'Plus Jakarta Sans', sans-serif", color: '#1A1A1A' }}>
+
       {/* Back bar */}
       <div className="em-back-bar">
-        <button className="em-back-btn" onClick={onClose}>
+        <button className="em-back-btn" onClick={() => navigate('/eventos')}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
             <path d="M9 3L5 7L9 11" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
@@ -63,28 +83,20 @@ export default function EventModal({ event, onClose }: Props) {
             <rect x="420" y="100" width="360" height="270" fill="white"/>
             <polygon points="420,100 600,20 780,100" fill="white"/>
             <rect x="565" y="0" width="70" height="130" fill="white"/>
-            <rect x="578" y="-18" width="44" height="58" fill="white"/>
             <ellipse cx="490" cy="170" rx="22" ry="34" fill="#006B75" opacity="0.5"/>
             <ellipse cx="600" cy="170" rx="22" ry="34" fill="#006B75" opacity="0.5"/>
             <ellipse cx="710" cy="170" rx="22" ry="34" fill="#006B75" opacity="0.5"/>
             <rect x="567" y="285" width="66" height="85" fill="#006B75" opacity="0.35"/>
-            <line x1="600" y1="-18" x2="50" y2="400" stroke="white" strokeWidth="1" opacity="0.07"/>
-            <line x1="600" y1="-18" x2="1150" y2="400" stroke="white" strokeWidth="1" opacity="0.07"/>
           </svg>
         )}
         <div className="em-hero-overlay" />
         <div className="em-hero-content">
           <div className="em-hero-badges">
             {event.allowsRegistration && !isFull && (
-              <div className="em-badge-live">
-                <div className="em-live-dot" />
-                Inscripciones abiertas
-              </div>
+              <div className="em-badge-live"><div className="em-live-dot" />Inscripciones abiertas</div>
             )}
             {isFull && (
-              <div className="em-badge-live" style={{ background: 'rgba(100,100,100,0.8)' }}>
-                Sin cupos
-              </div>
+              <div className="em-badge-live" style={{ background: 'rgba(100,100,100,0.8)' }}>Sin cupos</div>
             )}
             <div className="em-badge-cat">{event.churchName}</div>
           </div>
@@ -101,11 +113,8 @@ export default function EventModal({ event, onClose }: Props) {
 
       {/* Body */}
       <div className="em-body">
-
-        {/* ── Left column ── */}
+        {/* Left column */}
         <div className="em-left">
-
-          {/* Description */}
           {event.description && (
             <div>
               <div className="em-section-title">Sobre el evento</div>
@@ -115,51 +124,33 @@ export default function EventModal({ event, onClose }: Props) {
             </div>
           )}
 
-          {/* Info grid */}
           <div>
             <div className="em-section-title">Información del evento</div>
             <div className="em-card">
               <div className="em-info-grid">
-
-                {/* Date */}
                 <div className="em-info-item">
                   <div className="em-info-icon">
-                    <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
-                      <rect x="1.5" y="3.5" width="14" height="12" rx="2" stroke="#E8A020" strokeWidth="1.4"/>
-                      <path d="M5 2V4.5M12 2V4.5M1.5 7.5H15.5" stroke="#E8A020" strokeWidth="1.4" strokeLinecap="round"/>
-                    </svg>
+                    <svg width="17" height="17" viewBox="0 0 17 17" fill="none"><rect x="1.5" y="3.5" width="14" height="12" rx="2" stroke="#E8A020" strokeWidth="1.4"/><path d="M5 2V4.5M12 2V4.5M1.5 7.5H15.5" stroke="#E8A020" strokeWidth="1.4" strokeLinecap="round"/></svg>
                   </div>
                   <div>
                     <div className="em-info-label">Fecha</div>
                     <div className="em-info-val" style={{ textTransform: 'capitalize' }}>{formattedDate}</div>
                   </div>
                 </div>
-
-                {/* Time */}
                 <div className="em-info-item">
                   <div className="em-info-icon">
-                    <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
-                      <circle cx="8.5" cy="8.5" r="6.5" stroke="#E8A020" strokeWidth="1.4"/>
-                      <path d="M8.5 5V8.5L11 10.5" stroke="#E8A020" strokeWidth="1.4" strokeLinecap="round"/>
-                    </svg>
+                    <svg width="17" height="17" viewBox="0 0 17 17" fill="none"><circle cx="8.5" cy="8.5" r="6.5" stroke="#E8A020" strokeWidth="1.4"/><path d="M8.5 5V8.5L11 10.5" stroke="#E8A020" strokeWidth="1.4" strokeLinecap="round"/></svg>
                   </div>
                   <div>
                     <div className="em-info-label">Hora</div>
-                    <div className="em-info-val">{formattedTime}</div>
-                    {endDate && (
-                      <div className="em-info-sub">Hasta {format(endDate, "HH:mm 'hrs'")}</div>
-                    )}
+                    <div className="em-info-val">{format(startDate, "HH:mm 'hrs'")}</div>
+                    {endDate && <div className="em-info-sub">Hasta {format(endDate, "HH:mm 'hrs'")}</div>}
                   </div>
                 </div>
-
-                {/* Location */}
                 {event.location && (
                   <div className="em-info-item">
                     <div className="em-info-icon">
-                      <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
-                        <path d="M8.5 1.5C5.7 1.5 3.5 3.7 3.5 6.5C3.5 10.5 8.5 15.5 8.5 15.5S13.5 10.5 13.5 6.5C13.5 3.7 11.3 1.5 8.5 1.5Z" stroke="#E8A020" strokeWidth="1.4" fill="none"/>
-                        <circle cx="8.5" cy="6.5" r="2.5" stroke="#E8A020" strokeWidth="1.4"/>
-                      </svg>
+                      <svg width="17" height="17" viewBox="0 0 17 17" fill="none"><path d="M8.5 1.5C5.7 1.5 3.5 3.7 3.5 6.5C3.5 10.5 8.5 15.5 8.5 15.5S13.5 10.5 13.5 6.5C13.5 3.7 11.3 1.5 8.5 1.5Z" stroke="#E8A020" strokeWidth="1.4" fill="none"/><circle cx="8.5" cy="6.5" r="2.5" stroke="#E8A020" strokeWidth="1.4"/></svg>
                     </div>
                     <div>
                       <div className="em-info-label">Lugar</div>
@@ -167,110 +158,67 @@ export default function EventModal({ event, onClose }: Props) {
                     </div>
                   </div>
                 )}
-
-                {/* Capacity */}
                 {event.maxAttendees && (
                   <div className="em-info-item">
                     <div className="em-info-icon">
-                      <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
-                        <circle cx="6" cy="6" r="3" stroke="#E8A020" strokeWidth="1.4"/>
-                        <path d="M1.5 15.5C1.5 12.5 3.5 10 6 10" stroke="#E8A020" strokeWidth="1.4" strokeLinecap="round"/>
-                        <circle cx="12" cy="9" r="2.5" stroke="#E8A020" strokeWidth="1.4"/>
-                        <path d="M9 15.5C9 13 10.3 11 12 11C13.7 11 15 13 15 15.5" stroke="#E8A020" strokeWidth="1.4" strokeLinecap="round"/>
-                      </svg>
+                      <svg width="17" height="17" viewBox="0 0 17 17" fill="none"><circle cx="6" cy="6" r="3" stroke="#E8A020" strokeWidth="1.4"/><path d="M1.5 15.5C1.5 12.5 3.5 10 6 10" stroke="#E8A020" strokeWidth="1.4" strokeLinecap="round"/><circle cx="12" cy="9" r="2.5" stroke="#E8A020" strokeWidth="1.4"/><path d="M9 15.5C9 13 10.3 11 12 11C13.7 11 15 13 15 15.5" stroke="#E8A020" strokeWidth="1.4" strokeLinecap="round"/></svg>
                     </div>
                     <div>
                       <div className="em-info-label">Capacidad</div>
                       <div className="em-info-val">{event.maxAttendees.toLocaleString()} personas</div>
-                      <div className="em-info-sub">
-                        {spotsLeft !== null && spotsLeft > 0
-                          ? `${spotsLeft} cupos disponibles`
-                          : 'Sin cupos disponibles'}
-                      </div>
+                      <div className="em-info-sub">{spotsLeft !== null && spotsLeft > 0 ? `${spotsLeft} cupos disponibles` : 'Sin cupos'}</div>
                     </div>
                   </div>
                 )}
-
-                {/* Registration */}
                 <div className="em-info-item">
                   <div className="em-info-icon">
-                    <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
-                      <path d="M8.5 2L10.3 7H15.5L11.2 9.9L13 15L8.5 12L4 15L5.8 9.9L1.5 7H6.7L8.5 2Z" stroke="#E8A020" strokeWidth="1.4" strokeLinejoin="round"/>
-                    </svg>
+                    <svg width="17" height="17" viewBox="0 0 17 17" fill="none"><path d="M8.5 2L10.3 7H15.5L11.2 9.9L13 15L8.5 12L4 15L5.8 9.9L1.5 7H6.7L8.5 2Z" stroke="#E8A020" strokeWidth="1.4" strokeLinejoin="round"/></svg>
                   </div>
                   <div>
                     <div className="em-info-label">Entrada</div>
                     <div className="em-info-val">Gratuita</div>
-                    <div className="em-info-sub">
-                      {event.allowsRegistration ? 'Inscripción requerida' : 'Sin inscripción'}
-                    </div>
+                    <div className="em-info-sub">{event.allowsRegistration ? 'Inscripción requerida' : 'Sin inscripción'}</div>
                   </div>
                 </div>
-
-                {/* Church */}
                 <div className="em-info-item">
                   <div className="em-info-icon">
-                    <svg width="17" height="17" viewBox="0 0 17 17" fill="none">
-                      <path d="M8.5 1.5V3M7 3H10M2 15.5H15V8.5L8.5 4L2 8.5V15.5Z" stroke="#E8A020" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
-                      <path d="M6 15.5V11H11V15.5" stroke="#E8A020" strokeWidth="1.4" strokeLinecap="round"/>
-                    </svg>
+                    <svg width="17" height="17" viewBox="0 0 17 17" fill="none"><path d="M8.5 1.5V3M7 3H10M2 15.5H15V8.5L8.5 4L2 8.5V15.5Z" stroke="#E8A020" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/><path d="M6 15.5V11H11V15.5" stroke="#E8A020" strokeWidth="1.4" strokeLinecap="round"/></svg>
                   </div>
                   <div>
                     <div className="em-info-label">Organizador</div>
                     <div className="em-info-val">{event.churchName}</div>
                   </div>
                 </div>
-
               </div>
             </div>
           </div>
         </div>
 
-        {/* ── Right column ── */}
+        {/* Right column */}
         <div className="em-right">
-
-          {/* Register card */}
           <div className="em-register-card">
             <div className="em-rc-top">
               <div className="em-rc-circle em-rcc1" />
               <div className="em-rc-circle em-rcc2" />
               {event.allowsRegistration && !isFull && (
-                <div className="em-rc-tag">
-                  <div className="em-rc-tag-dot" />
-                  Inscripciones abiertas
-                </div>
+                <div className="em-rc-tag"><div className="em-rc-tag-dot" />Inscripciones abiertas</div>
               )}
               <div className="em-rc-price-wrap">
                 <div className="em-rc-price">Gratis</div>
-                <div className="em-rc-price-sub">
-                  {event.allowsRegistration ? 'Inscripción requerida' : 'Acceso libre'}
-                </div>
+                <div className="em-rc-price-sub">{event.allowsRegistration ? 'Inscripción requerida' : 'Acceso libre'}</div>
               </div>
               {event.maxAttendees && (
-                <div className="em-rc-seats">
-                  Quedan <strong>{spotsLeft ?? 0} cupos</strong> de {event.maxAttendees.toLocaleString()}
-                </div>
-              )}
-              {!event.allowsRegistration && (
-                <div className="em-rc-closed">Sin inscripción requerida</div>
+                <div className="em-rc-seats">Quedan <strong>{spotsLeft ?? 0} cupos</strong> de {event.maxAttendees.toLocaleString()}</div>
               )}
             </div>
-
             <div className="em-rc-body">
-              {/* Spots bar */}
               {event.maxAttendees && (
                 <div className="em-spots-wrap">
-                  <div className="em-spots-label">
-                    <span>Ocupación</span>
-                    <strong>{occupancy}%</strong>
-                  </div>
-                  <div className="em-bar">
-                    <div className="em-bar-fill" style={{ width: `${occupancy}%` }} />
-                  </div>
+                  <div className="em-spots-label"><span>Ocupación</span><strong>{occupancy}%</strong></div>
+                  <div className="em-bar"><div className="em-bar-fill" style={{ width: `${occupancy}%` }} /></div>
                 </div>
               )}
 
-              {/* Registered success */}
               {registered && (
                 <div className="em-success">
                   <div className="em-success-title">¡Inscripción confirmada!</div>
@@ -278,29 +226,16 @@ export default function EventModal({ event, onClose }: Props) {
                 </div>
               )}
 
-              {/* Registration form */}
               {event.allowsRegistration && !registered && !showForm && (
-                <button
-                  className={`em-btn-register${isFull ? ' full' : ''}`}
-                  disabled={isFull}
-                  onClick={() => setShowForm(true)}
-                >
-                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                    <path d="M13 8H3M10 5L13 8L10 11" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
-                  </svg>
+                <button className={`em-btn-register${isFull ? ' full' : ''}`} disabled={isFull} onClick={() => setShowForm(true)}>
+                  <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13 8H3M10 5L13 8L10 11" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/></svg>
                   {isFull ? 'Sin cupos disponibles' : 'Inscribirme al evento'}
                 </button>
               )}
 
               {event.allowsRegistration && !registered && showForm && (
                 <div className="em-form-section">
-                  <div className="em-form-title">
-                    <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
-                      <rect x="2" y="1" width="10" height="12" rx="2" stroke="#0098A6" strokeWidth="1.3"/>
-                      <path d="M4.5 5H9.5M4.5 7.5H9.5M4.5 10H7.5" stroke="#0098A6" strokeWidth="1.3" strokeLinecap="round"/>
-                    </svg>
-                    Formulario de inscripción
-                  </div>
+                  <div className="em-form-title">Formulario de inscripción</div>
                   <div className="em-form-group">
                     <label className="em-form-label">Nombre completo *</label>
                     <input className="em-form-input" required placeholder="Tu nombre completo"
@@ -322,24 +257,17 @@ export default function EventModal({ event, onClose }: Props) {
                       value={form.notes} onChange={e => setForm(f => ({ ...f, notes: e.target.value }))} />
                   </div>
                   <div className="em-form-actions">
-                    <button type="button" className="em-btn-cancel" onClick={() => setShowForm(false)}>
-                      Cancelar
-                    </button>
-                    <button
-                      type="button"
-                      className="em-btn-confirm"
+                    <button type="button" className="em-btn-cancel" onClick={() => setShowForm(false)}>Cancelar</button>
+                    <button type="button" className="em-btn-confirm"
                       disabled={isPending || !form.fullName || !form.email}
-                      onClick={() => register()}
-                    >
+                      onClick={() => register()}>
                       {isPending ? 'Enviando...' : 'Confirmar'}
                     </button>
                   </div>
                 </div>
               )}
 
-              {/* Share button */}
-              <button className="em-btn-share" style={{ marginTop: showForm ? 0 : 0 }}
-                onClick={() => navigator.clipboard?.writeText(window.location.href)}>
+              <button className="em-btn-share" onClick={() => navigator.clipboard?.writeText(window.location.href)}>
                 <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
                   <circle cx="11" cy="3" r="1.8" stroke="currentColor" strokeWidth="1.3"/>
                   <circle cx="3" cy="7" r="1.8" stroke="currentColor" strokeWidth="1.3"/>
@@ -348,10 +276,7 @@ export default function EventModal({ event, onClose }: Props) {
                 </svg>
                 Compartir evento
               </button>
-
               <div className="em-rc-divider" />
-
-              {/* Church info */}
               <div className="em-org-row">
                 <div className="em-org-avatar">
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
@@ -373,19 +298,15 @@ export default function EventModal({ event, onClose }: Props) {
             </div>
           </div>
 
-          {/* Map placeholder */}
           {event.location && (
             <div className="em-map">
-              <div className="em-map-inner">
-                <div className="em-map-pin" />
-              </div>
+              <div className="em-map-inner"><div className="em-map-pin" /></div>
               <div className="em-map-footer">
                 <span className="em-map-addr">{event.location}</span>
                 <span className="em-map-link">Ver en mapa →</span>
               </div>
             </div>
           )}
-
         </div>
       </div>
     </div>

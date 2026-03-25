@@ -52,7 +52,7 @@ export default function Navbar() {
             icon: <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><circle cx="6.5" cy="6.5" r="4.5" stroke="currentColor" strokeWidth="1.3"/><line x1="3.5" y1="6.5" x2="9.5" y2="6.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/><line x1="6.5" y1="3.5" x2="6.5" y2="9.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>,
           },
           {
-            to: '/', label: 'Eventos',
+            to: '/eventos', label: 'Eventos',
             icon: <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><rect x="1.5" y="2.5" width="10" height="9" rx="1.5" stroke="currentColor" strokeWidth="1.2"/><path d="M4 1.5V3M9 1.5V3M1.5 5.5H11.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/></svg>,
           },
           {
