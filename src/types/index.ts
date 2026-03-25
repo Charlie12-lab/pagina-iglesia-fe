@@ -70,6 +70,7 @@ export interface BlogPostSummary {
 export interface LoginResponse {
   token: string;
   username: string;
+  email: string;
   role: string;
   churchId?: number;
   churchName?: string;

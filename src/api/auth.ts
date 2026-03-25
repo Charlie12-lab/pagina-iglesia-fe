@@ -1,7 +1,14 @@
 import client from './client';
 import type { LoginResponse } from '../types';
 
+export interface LoginPayload {
+  email: string;
+  password: string;
+  expectAdmin?: boolean;
+  churchId?: number | null;
+}
+
 export const authApi = {
-  login: (email: string, password: string) =>
-    client.post<LoginResponse>('/auth/login', { email, password }).then(r => r.data),
+  login: (payload: LoginPayload) =>
+    client.post<LoginResponse>('/auth/login', payload).then(r => r.data),
 };

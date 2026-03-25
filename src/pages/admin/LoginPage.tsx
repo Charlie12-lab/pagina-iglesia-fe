@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQuery } from '@tanstack/react-query';
+import axios from 'axios';
 import { authApi } from '../../api/auth';
+import { churchesApi } from '../../api/churches';
 import { useAuthStore } from '../../store/authStore';
 import './LoginPage.css';
 
@@ -9,34 +11,67 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const { login } = useAuthStore();
 
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [pwVisible, setPwVisible] = useState(false);
-  const [adminMode, setAdminMode] = useState(false);
-  const [error, setError] = useState('');
+  const [email, setEmail]           = useState('');
+  const [password, setPassword]     = useState('');
+  const [pwVisible, setPwVisible]   = useState(false);
+  const [adminMode, setAdminMode]   = useState(false);
+  const [selectedChurchId, setSelectedChurchId] = useState<number | null>(null);
+  const [error, setError]           = useState('');
+
+  // Cargar iglesias activas para el dropdown
+  const { data: churches = [] } = useQuery({
+    queryKey: ['churches-login'],
+    queryFn: () => churchesApi.getAll(),
+    staleTime: 5 * 60 * 1000,
+  });
 
   const { mutate, isPending } = useMutation({
-    mutationFn: () => authApi.login(email, password),
+    mutationFn: () =>
+      authApi.login({
+        email,
+        password,
+        expectAdmin: adminMode,
+        churchId: adminMode ? selectedChurchId : null,
+      }),
     onSuccess: (data) => {
       login({
-        token: data.token,
-        username: data.username,
-        role: data.role as 'SuperAdmin' | 'ChurchAdmin',
-        churchId: data.churchId,
+        token:      data.token,
+        username:   data.username,
+        role:       data.role as 'SuperAdmin' | 'ChurchAdmin',
+        churchId:   data.churchId,
         churchName: data.churchName,
       });
-      navigate('/admin');
+      // Admin toggle activo → panel admin; si no → inicio público
+      navigate(adminMode ? '/admin' : '/');
     },
-    onError: () => setError('Correo o contraseña incorrectos. Inténtalo de nuevo.'),
+    onError: (err: unknown) => {
+      if (axios.isAxiosError(err)) {
+        const status  = err.response?.status;
+        const message = err.response?.data?.message as string | undefined;
+        if (status === 403) {
+          setError(message ?? 'No tienes permisos para este acceso.');
+          return;
+        }
+      }
+      setError('Correo o contraseña incorrectos. Inténtalo de nuevo.');
+    },
   });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    if (adminMode && !selectedChurchId) {
+      setError('Selecciona la iglesia que administras.');
+      return;
+    }
     mutate();
   };
 
-  const toggleAdmin = () => setAdminMode(v => !v);
+  const toggleAdmin = () => {
+    setAdminMode(v => !v);
+    setSelectedChurchId(null);
+    setError('');
+  };
 
   return (
     <div className="lp-root">
@@ -91,6 +126,7 @@ export default function LoginPage() {
                 </div>
               </div>
 
+              {/* Dropdown de iglesias — solo cuando adminMode está activo */}
               <div className={`lp-dropdown${adminMode ? ' open' : ''}`}>
                 <div className="lp-select-label">
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -106,14 +142,18 @@ export default function LoginPage() {
                       <path d="M5 13V10H9V13" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/>
                     </svg>
                   </span>
-                  <select className="lp-select" onClick={e => e.stopPropagation()}>
+                  <select
+                    className="lp-select"
+                    value={selectedChurchId ?? ''}
+                    onClick={e => e.stopPropagation()}
+                    onChange={e => setSelectedChurchId(e.target.value ? Number(e.target.value) : null)}
+                  >
                     <option value="">— Elige una iglesia —</option>
-                    <option>Centro Cristiano Esperanza · Quito</option>
-                    <option>Iglesia Palabra de Vida · Quito</option>
-                    <option>Comunidad Fe Viva · Guayaquil</option>
-                    <option>Iglesia Bautista Cuenca</option>
-                    <option>El Refugio Santo Domingo</option>
-                    <option>Casa de Oración Machala</option>
+                    {churches.map(c => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}{c.city ? ` · ${c.city}` : ''}
+                      </option>
+                    ))}
                   </select>
                   <span className="lp-select-chevron">
                     <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
@@ -201,7 +241,7 @@ export default function LoginPage() {
 
               {/* Submit */}
               <button type="submit" className="lp-btn" disabled={isPending}>
-                {isPending ? 'Ingresando...' : 'Ingresar'}
+                {isPending ? 'Ingresando...' : adminMode ? 'Ingresar al panel' : 'Ingresar'}
                 {!isPending && (
                   <svg width="15" height="15" viewBox="0 0 15 15" fill="none">
                     <path d="M3 7.5H12M9 4.5L12 7.5L9 10.5" stroke="white" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"/>
