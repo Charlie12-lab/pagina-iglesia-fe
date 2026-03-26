@@ -41,8 +41,8 @@ export default function LoginPage() {
         churchId:   data.churchId,
         churchName: data.churchName,
       });
-      // Admin toggle activo → panel admin; si no → inicio público
-      navigate(adminMode ? '/admin' : '/');
+      // Admin toggle activo o rol admin → panel admin; si no → inicio público
+      navigate(adminMode || data.role === 'SuperAdmin' || data.role === 'ChurchAdmin' ? '/admin' : '/');
     },
     onError: (err: unknown) => {
       if (axios.isAxiosError(err)) {
@@ -60,10 +60,6 @@ export default function LoginPage() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-    if (adminMode && !selectedChurchId) {
-      setError('Selecciona la iglesia que administras.');
-      return;
-    }
     mutate();
   };
 

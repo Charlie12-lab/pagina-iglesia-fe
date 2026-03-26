@@ -10,6 +10,10 @@ export interface Church {
   logoUrl?: string;
   websiteUrl?: string;
   isActive: boolean;
+  denomination?: string;
+  status: string;       // "Active" | "Pending" | "Inactive"
+  pastorName?: string;
+  pastorEmail?: string;
 }
 
 // ─── Events ──────────────────────────────────────────────────────────────────
@@ -28,6 +32,8 @@ export interface Event {
   churchId: number;
   churchName: string;
   churchLogoUrl?: string;
+  eventType?: string;   // Vigilia|Conferencia|Campamento|Campaña|Aniversario|Otros
+  modality?: string;    // Presencial|Online|Híbrido
 }
 
 export interface EventRegistrationRequest {
@@ -52,6 +58,7 @@ export interface BlogPost {
   isPublished: boolean;
   publishedAt?: string;
   createdAt: string;
+  category?: string;
 }
 
 export interface BlogPostSummary {
@@ -64,6 +71,7 @@ export interface BlogPostSummary {
   coverImageUrl?: string;
   tags: string[];
   publishedAt?: string;
+  category?: string;
 }
 
 // ─── Auth ────────────────────────────────────────────────────────────────────
