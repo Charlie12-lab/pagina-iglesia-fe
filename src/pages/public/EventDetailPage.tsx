@@ -118,7 +118,6 @@ export default function EventDetailPage() {
   function handleIndSubmit() {
     const errs: Partial<IndForm> = {};
     if (!ind.fullName.trim()) errs.fullName = 'requerido';
-    if (!ind.email.trim()) errs.email = 'requerido';
     setIndErrors(errs);
     if (Object.keys(errs).length) return;
     registerInd();
@@ -401,9 +400,9 @@ export default function EventDetailPage() {
                 </div>
 
                 <div className="erp-form-group">
-                  <label className="erp-fl">Correo electrónico <span className="erp-req">*</span></label>
+                  <label className="erp-fl">Correo electrónico <span style={{ fontSize: 11, color: '#ABABAB', fontWeight: 400 }}>(opcional)</span></label>
                   <input
-                    className={`erp-fi${indErrors.email ? ' error' : ''}`}
+                    className="erp-fi"
                     type="email"
                     placeholder="tucorreo@ejemplo.com"
                     value={ind.email}

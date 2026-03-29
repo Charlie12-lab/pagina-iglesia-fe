@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
 import { eventsApi } from '../../api/events';
 import { churchesApi } from '../../api/churches';
@@ -54,7 +55,7 @@ const emptyForm = {
   isPublished: true, churchId: '', eventType: '', modality: 'Presencial',
 };
 
-const BACKEND = 'http://localhost:5215';
+const BACKEND = (import.meta.env.VITE_BACKEND_URL as string) ?? 'http://localhost:5215';
 
 function downloadExcel(regs: EventRegistrationDto[], eventTitle: string) {
   const rows = regs.map(r => ({
@@ -190,7 +191,7 @@ export default function AdminEventsPage() {
   const imageInputRef = useRef<HTMLInputElement>(null);
   const [viewingRegistrations, setViewingRegistrations] = useState<Event | null>(null);
 
-  const { data: events = [] } = useQuery({
+  const { data: events = [], isLoading: loadingEvents } = useQuery({
     queryKey: ['events-admin'],
     queryFn: () => eventsApi.getAll(user?.role === 'ChurchAdmin' ? { churchId: user.churchId } : undefined),
   });
@@ -216,16 +217,23 @@ export default function AdminEventsPage() {
       qc.invalidateQueries({ queryKey: ['events-admin'] });
       qc.invalidateQueries({ queryKey: ['events'] });
       setShowForm(false); setEditing(null); setForm(emptyForm); setSaveError('');
+      toast.success(editing ? 'Evento actualizado correctamente' : 'Evento creado correctamente');
     },
     onError: (err: unknown) => {
       const msg = err instanceof Error ? err.message : 'Error al guardar el evento. Inténtalo de nuevo.';
       setSaveError(msg);
+      toast.error(msg);
     },
   });
 
   const { mutate: remove } = useMutation({
     mutationFn: (id: number) => eventsApi.remove(id),
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['events-admin'] }); qc.invalidateQueries({ queryKey: ['events'] }); },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['events-admin'] });
+      qc.invalidateQueries({ queryKey: ['events'] });
+      toast.success('Evento eliminado');
+    },
+    onError: () => toast.error('No se pudo eliminar el evento'),
   });
 
   const openEdit = (ev: Event) => {
@@ -252,7 +260,7 @@ export default function AdminEventsPage() {
     setUploadingImage(true);
     try {
       const url = await eventsApi.uploadImage(file);
-      const fullUrl = `http://localhost:5215${url}`;
+      const fullUrl = `${BACKEND}${url}`;
       setField('imageUrl', fullUrl);
       setImagePreview(fullUrl);
     } catch {
@@ -547,7 +555,22 @@ export default function AdminEventsPage() {
             <tr>{['Evento', 'Tipo', 'Fecha', 'Iglesia', 'Inscripciones', 'Precio', 'Estado', 'Acciones'].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
           </thead>
           <tbody>
-            {filtered.map(ev => (
+            {loadingEvents && Array.from({ length: 5 }).map((_, i) => (
+              <tr key={i}>
+                {Array.from({ length: 8 }).map((__, j) => (
+                  <td key={j} style={s.td}>
+                    <div style={{
+                      height: 14, borderRadius: 6,
+                      background: 'linear-gradient(90deg, #F3F3F3 25%, #E8E8E8 50%, #F3F3F3 75%)',
+                      backgroundSize: '200% 100%',
+                      animation: 'shimmer 1.4s infinite',
+                      width: j === 0 ? '80%' : j === 7 ? 60 : '60%',
+                    }} />
+                  </td>
+                ))}
+              </tr>
+            ))}
+            {!loadingEvents && filtered.map(ev => (
               <tr key={ev.id} style={{ cursor: 'pointer' }} onClick={() => openEdit(ev)}>
                 <td style={{ ...s.td, fontWeight: 700, color: '#1A1A1A' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -580,7 +603,7 @@ export default function AdminEventsPage() {
                 </td>
               </tr>
             ))}
-            {filtered.length === 0 && (
+            {!loadingEvents && filtered.length === 0 && (
               <tr><td colSpan={8} style={{ textAlign: 'center', padding: '48px 20px', color: '#ABABAB' }}>
                 <div style={{ width: 56, height: 56, background: '#FEF5E0', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="2" y="4" width="20" height="18" rx="3" stroke="#E8A020" strokeWidth="1.5"/><path d="M7 2V6M17 2V6M2 9H22" stroke="#E8A020" strokeWidth="1.5" strokeLinecap="round"/></svg>

@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Toaster } from 'react-hot-toast';
 
 // Layouts
 import PublicLayout from './components/layout/PublicLayout';
@@ -29,6 +30,15 @@ const queryClient = new QueryClient({
 export default function App() {
   return (
     <QueryClientProvider client={queryClient}>
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          duration: 3500,
+          style: { fontFamily: "'Plus Jakarta Sans', sans-serif", fontSize: 13.5 },
+          success: { style: { background: '#E6F7F8', color: '#00818C', border: '1px solid #B2E8EC' } },
+          error: { style: { background: '#FFEEF2', color: '#9D1539', border: '1px solid #F9B8C6' } },
+        }}
+      />
       <BrowserRouter>
         <Routes>
           {/* Public */}

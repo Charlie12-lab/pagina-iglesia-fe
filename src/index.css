@@ -63,3 +63,8 @@
 .rbc-toolbar button { cursor: pointer; }
 .rbc-event { background: var(--bondi) !important; border: 0 !important; border-radius: 4px; font-size: 12px; }
 .rbc-today { background: var(--bondi-pale) !important; }
+
+@keyframes shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
