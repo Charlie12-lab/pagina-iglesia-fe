@@ -34,6 +34,7 @@ export interface Event {
   churchLogoUrl?: string;
   eventType?: string;   // Vigilia|Conferencia|Campamento|Campaña|Aniversario|Otros
   modality?: string;    // Presencial|Online|Híbrido
+  price?: number;       // null = gratuito
 }
 
 export interface EventRegistrationRequest {
@@ -41,6 +42,21 @@ export interface EventRegistrationRequest {
   email: string;
   phone?: string;
   notes?: string;
+  church?: string;  // Iglesia de procedencia
+}
+
+export interface GroupMember {
+  fullName: string;
+  email?: string;
+  phone?: string;
+}
+
+export interface GroupRegistrationRequest {
+  responsible: string;
+  email: string;
+  phone?: string;
+  church?: string;
+  members: GroupMember[];
 }
 
 // ─── Blog ────────────────────────────────────────────────────────────────────

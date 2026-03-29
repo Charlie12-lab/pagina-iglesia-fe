@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { eventsApi } from '../../api/events';
 import { churchesApi } from '../../api/churches';
@@ -49,8 +49,8 @@ const MODALITY_OPTIONS = [
 
 const emptyForm = {
   title: '', description: '', startDate: '', endDate: '', location: '',
-  imageUrl: '', allowsRegistration: false, maxAttendees: '', isPublished: true, churchId: '',
-  eventType: '', modality: 'Presencial',
+  imageUrl: '', allowsRegistration: false, maxAttendees: '', price: '',
+  isPublished: true, churchId: '', eventType: '', modality: 'Presencial',
 };
 
 function evStatus(ev: Event): string {
@@ -79,6 +79,9 @@ export default function AdminEventsPage() {
   const [saveError, setSaveError] = useState('');
   const [search, setSearch] = useState('');
   const [filterType, setFilterType] = useState('');
+  const [imagePreview, setImagePreview] = useState('');
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const imageInputRef = useRef<HTMLInputElement>(null);
 
   const { data: events = [] } = useQuery({
     queryKey: ['events-admin'],
@@ -96,6 +99,7 @@ export default function AdminEventsPage() {
         ...form,
         churchId,
         maxAttendees: form.maxAttendees ? Number(form.maxAttendees) : undefined,
+        price: form.price ? Number(form.price) : undefined,
         startDate: new Date(form.startDate).toISOString(),
         endDate: form.endDate ? new Date(form.endDate).toISOString() : undefined,
       };
@@ -120,6 +124,7 @@ export default function AdminEventsPage() {
   const openEdit = (ev: Event) => {
     setSaveError('');
     setEditing(ev);
+    setImagePreview(ev.imageUrl ?? '');
     setForm({
       title: ev.title, description: ev.description ?? '',
       startDate: new Date(ev.startDate).toISOString().slice(0, 16),
@@ -127,13 +132,28 @@ export default function AdminEventsPage() {
       location: ev.location ?? '', imageUrl: ev.imageUrl ?? '',
       allowsRegistration: ev.allowsRegistration,
       maxAttendees: ev.maxAttendees?.toString() ?? '',
+      price: ev.price?.toString() ?? '',
       isPublished: ev.isPublished, churchId: ev.churchId.toString(),
       eventType: ev.eventType ?? '', modality: ev.modality ?? 'Presencial',
     });
     setShowForm(true);
   };
 
-  const openNew = () => { setEditing(null); setForm(emptyForm); setSaveError(''); setShowForm(true); };
+  const openNew = () => { setEditing(null); setForm(emptyForm); setSaveError(''); setImagePreview(''); setShowForm(true); };
+
+  async function handleImageFile(file: File) {
+    setUploadingImage(true);
+    try {
+      const url = await eventsApi.uploadImage(file);
+      const fullUrl = `http://localhost:5215${url}`;
+      setField('imageUrl', fullUrl);
+      setImagePreview(fullUrl);
+    } catch {
+      setSaveError('Error al subir la imagen. Inténtalo de nuevo.');
+    } finally {
+      setUploadingImage(false);
+    }
+  }
   const setField = (key: keyof typeof form, val: string | boolean) => setForm(f => ({ ...f, [key]: val }));
 
   const filtered = events.filter(ev => {
@@ -205,9 +225,60 @@ export default function AdminEventsPage() {
                     <label style={s.label}>Descripción</label>
                     <textarea style={{ ...s.fi, resize: 'vertical', minHeight: 90 }} value={form.description} onChange={e => setField('description', e.target.value)} rows={3} />
                   </div>
+                  {/* Imagen del evento */}
                   <div style={s.formGroup}>
-                    <label style={s.label}>URL imagen</label>
-                    <input style={s.fi} value={form.imageUrl} onChange={e => setField('imageUrl', e.target.value)} placeholder="https://..." />
+                    <label style={s.label}>Foto del evento</label>
+                    <input
+                      ref={imageInputRef}
+                      type="file"
+                      accept="image/*"
+                      style={{ display: 'none' }}
+                      onChange={e => { const f = e.target.files?.[0]; if (f) handleImageFile(f); }}
+                    />
+                    {imagePreview ? (
+                      <div style={{ position: 'relative', borderRadius: 9, overflow: 'hidden', border: '1.5px solid #E2E2E2' }}>
+                        <img src={imagePreview} alt="Preview" style={{ width: '100%', height: 160, objectFit: 'cover', display: 'block' }} />
+                        <div style={{ position: 'absolute', top: 8, right: 8, display: 'flex', gap: 6 }}>
+                          <button type="button" onClick={() => imageInputRef.current?.click()}
+                            style={{ background: 'rgba(0,0,0,0.55)', color: 'white', border: 'none', borderRadius: 7, padding: '5px 10px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                            Cambiar
+                          </button>
+                          <button type="button" onClick={() => { setField('imageUrl', ''); setImagePreview(''); if (imageInputRef.current) imageInputRef.current.value = ''; }}
+                            style={{ background: 'rgba(220,38,38,0.8)', color: 'white', border: 'none', borderRadius: 7, padding: '5px 10px', fontSize: 11.5, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}>
+                            Eliminar
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        onClick={() => !uploadingImage && imageInputRef.current?.click()}
+                        style={{ border: '2px dashed #E2E2E2', borderRadius: 9, padding: '28px 16px', textAlign: 'center', cursor: uploadingImage ? 'wait' : 'pointer', background: '#F9F9F9', transition: 'border-color 0.15s' }}
+                        onMouseEnter={e => (e.currentTarget.style.borderColor = '#0098A6')}
+                        onMouseLeave={e => (e.currentTarget.style.borderColor = '#E2E2E2')}
+                      >
+                        {uploadingImage ? (
+                          <div style={{ fontSize: 13, color: '#0098A6', fontWeight: 600 }}>Subiendo imagen...</div>
+                        ) : (
+                          <>
+                            <svg width="28" height="28" viewBox="0 0 28 28" fill="none" style={{ margin: '0 auto 8px', display: 'block' }}><rect x="2" y="2" width="24" height="24" rx="5" stroke="#ABABAB" strokeWidth="1.5"/><path d="M14 8V16M14 8L10 12M14 8L18 12" stroke="#ABABAB" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/><path d="M6 20L10.5 15.5L13 18L16.5 14L22 20" stroke="#ABABAB" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                            <div style={{ fontSize: 13, color: '#5C5C5C', fontWeight: 600, marginBottom: 3 }}>Haz clic para subir una foto</div>
+                            <div style={{ fontSize: 11.5, color: '#ABABAB' }}>JPG, PNG, WEBP · Máx. recomendado 2MB</div>
+                          </>
+                        )}
+                      </div>
+                    )}
+                    {/* Opción URL manual */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 6 }}>
+                      <div style={{ flex: 1, height: 1, background: '#E2E2E2' }} />
+                      <span style={{ fontSize: 11, color: '#ABABAB', whiteSpace: 'nowrap' }}>o ingresa una URL</span>
+                      <div style={{ flex: 1, height: 1, background: '#E2E2E2' }} />
+                    </div>
+                    <input
+                      style={s.fi}
+                      value={form.imageUrl}
+                      onChange={e => { setField('imageUrl', e.target.value); setImagePreview(e.target.value); }}
+                      placeholder="https://ejemplo.com/foto.jpg"
+                    />
                   </div>
                 </div>
               </div>
@@ -254,7 +325,32 @@ export default function AdminEventsPage() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 12, padding: 14, background: '#F0FAFB', border: '1.5px solid #0098A6', borderRadius: 9 }}>
                       <div style={s.formGroup}>
                         <label style={s.label}>Capacidad máxima</label>
-                        <input type="number" style={s.fi} value={form.maxAttendees} onChange={e => setField('maxAttendees', e.target.value)} placeholder="0 = ilimitado" />
+                        <input type="number" min={0} style={s.fi} value={form.maxAttendees} onChange={e => setField('maxAttendees', e.target.value)} placeholder="Dejar vacío = sin límite" />
+                      </div>
+                      {/* Precio */}
+                      <div style={{ height: 1, background: '#BEE3E6' }} />
+                      <div style={s.formGroup}>
+                        <label style={s.label}>
+                          Precio de inscripción
+                          <span style={{ marginLeft: 6, fontSize: 11, fontWeight: 400, color: '#777' }}>(dejar vacío = gratuito)</span>
+                        </label>
+                        <div style={{ position: 'relative' }}>
+                          <span style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', fontSize: 14, fontWeight: 700, color: form.price ? '#00818C' : '#ABABAB', pointerEvents: 'none' }}>$</span>
+                          <input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            style={{ ...s.fi, paddingLeft: 26 }}
+                            value={form.price}
+                            onChange={e => setField('price', e.target.value)}
+                            placeholder="0.00"
+                          />
+                        </div>
+                        {form.price && Number(form.price) > 0 && (
+                          <div style={{ fontSize: 11.5, color: '#00818C', fontWeight: 600, marginTop: 3 }}>
+                            Precio por persona: ${Number(form.price).toFixed(2)}
+                          </div>
+                        )}
                       </div>
                     </div>
                   )}
@@ -338,16 +434,28 @@ export default function AdminEventsPage() {
         </div>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
-            <tr>{['Evento', 'Tipo', 'Fecha', 'Iglesia', 'Inscripciones', 'Estado', 'Acciones'].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
+            <tr>{['Evento', 'Tipo', 'Fecha', 'Iglesia', 'Inscripciones', 'Precio', 'Estado', 'Acciones'].map(h => <th key={h} style={s.th}>{h}</th>)}</tr>
           </thead>
           <tbody>
             {filtered.map(ev => (
               <tr key={ev.id} style={{ cursor: 'pointer' }} onClick={() => openEdit(ev)}>
-                <td style={{ ...s.td, fontWeight: 700, color: '#1A1A1A' }}>{ev.title}</td>
+                <td style={{ ...s.td, fontWeight: 700, color: '#1A1A1A' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    {ev.imageUrl && (
+                      <img src={ev.imageUrl} alt="" style={{ width: 36, height: 36, borderRadius: 7, objectFit: 'cover', flexShrink: 0, border: '1px solid #E2E2E2' }} />
+                    )}
+                    {ev.title}
+                  </div>
+                </td>
                 <td style={s.td}>{ev.eventType || '—'}</td>
                 <td style={s.td}>{new Date(ev.startDate).toLocaleDateString('es')}</td>
                 <td style={s.td}>{ev.churchName}</td>
                 <td style={s.td}>{ev.allowsRegistration ? `${ev.currentAttendees}${ev.maxAttendees ? ' / ' + ev.maxAttendees : ''}` : '—'}</td>
+                <td style={s.td}>
+                  {ev.price && ev.price > 0
+                    ? <span style={{ fontWeight: 700, color: '#00818C' }}>${ev.price.toFixed(2)}</span>
+                    : <span style={{ color: '#ABABAB' }}>Gratis</span>}
+                </td>
                 <td style={s.td}><StatusBadge ev={ev} /></td>
                 <td style={s.td} onClick={e => e.stopPropagation()}>
                   <div style={{ display: 'flex', gap: 6 }}>
@@ -358,7 +466,7 @@ export default function AdminEventsPage() {
               </tr>
             ))}
             {filtered.length === 0 && (
-              <tr><td colSpan={7} style={{ textAlign: 'center', padding: '48px 20px', color: '#ABABAB' }}>
+              <tr><td colSpan={8} style={{ textAlign: 'center', padding: '48px 20px', color: '#ABABAB' }}>
                 <div style={{ width: 56, height: 56, background: '#FEF5E0', borderRadius: 14, display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 14px' }}>
                   <svg width="24" height="24" viewBox="0 0 24 24" fill="none"><rect x="2" y="4" width="20" height="18" rx="3" stroke="#E8A020" strokeWidth="1.5"/><path d="M7 2V6M17 2V6M2 9H22" stroke="#E8A020" strokeWidth="1.5" strokeLinecap="round"/></svg>
                 </div>
