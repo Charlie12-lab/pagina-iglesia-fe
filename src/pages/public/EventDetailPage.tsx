@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { eventsApi } from '../../api/events';
@@ -33,6 +33,7 @@ interface SuccessData {
 export default function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const qc = useQueryClient();
 
   const [mode, setMode] = useState<Mode>('individual');
   const [success, setSuccess] = useState<SuccessData | null>(null);
@@ -74,6 +75,12 @@ export default function EventDetailPage() {
           ...(indVoucher ? [['Comprobante', indVoucher.name] as [string, string]] : []),
         ],
       });
+      setInd({ fullName: '', email: '', phone: '', notes: '', church: '' });
+      setIndErrors({});
+      setIndVoucher(null);
+      if (indVoucherRef.current) indVoucherRef.current.value = '';
+      qc.invalidateQueries({ queryKey: ['event', id] });
+      qc.invalidateQueries({ queryKey: ['events'] });
     },
   });
 
@@ -95,6 +102,14 @@ export default function EventDetailPage() {
           ...(colVoucher ? [['Comprobante', colVoucher.name] as [string, string]] : []),
         ],
       });
+      setCol({ responsible: '', email: '', phone: '', church: '' });
+      setColErrors({});
+      setMembers([{ fullName: '' }, { fullName: '' }]);
+      setMemberErrors({});
+      setColVoucher(null);
+      if (colVoucherRef.current) colVoucherRef.current.value = '';
+      qc.invalidateQueries({ queryKey: ['event', id] });
+      qc.invalidateQueries({ queryKey: ['events'] });
     },
   });
 
@@ -415,12 +430,14 @@ export default function EventDetailPage() {
                     onChange={e => setInd(p => ({ ...p, notes: e.target.value }))} />
                 </div>
 
-                {/* Voucher individual */}
-                <VoucherUpload
-                  file={indVoucher}
-                  inputRef={indVoucherRef}
-                  onChange={f => handleVoucherChange(f, 'ind')}
-                />
+                {/* Voucher individual — solo si el evento tiene costo */}
+                {event.price && event.price > 0 && (
+                  <VoucherUpload
+                    file={indVoucher}
+                    inputRef={indVoucherRef}
+                    onChange={f => handleVoucherChange(f, 'ind')}
+                  />
+                )}
 
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginTop: 4 }}>
                   <button className="erp-btn-confirm" disabled={pendingInd} onClick={handleIndSubmit}>
@@ -521,8 +538,8 @@ export default function EventDetailPage() {
                   </div>
                 )}
 
-                {/* Voucher colectivo */}
-                {members.length > 0 && (
+                {/* Voucher colectivo — solo si el evento tiene costo */}
+                {members.length > 0 && event.price && event.price > 0 && (
                   <VoucherUpload
                     file={colVoucher}
                     inputRef={colVoucherRef}

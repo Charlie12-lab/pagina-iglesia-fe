@@ -59,6 +59,19 @@ export interface GroupRegistrationRequest {
   members: GroupMember[];
 }
 
+export interface EventRegistrationDto {
+  id: number;
+  eventId: number;
+  fullName: string;
+  email?: string;
+  phone?: string;
+  notes?: string;
+  church?: string;
+  voucherPath?: string;
+  groupId?: string;
+  registeredAt: string;
+}
+
 // ─── Blog ────────────────────────────────────────────────────────────────────
 export interface BlogPost {
   id: string;

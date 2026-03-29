@@ -1,9 +1,10 @@
 import { useRef, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import * as XLSX from 'xlsx';
 import { eventsApi } from '../../api/events';
 import { churchesApi } from '../../api/churches';
 import { useAuthStore } from '../../store/authStore';
-import type { Event } from '../../types';
+import type { Event, EventRegistrationDto } from '../../types';
 
 const s = {
   pageHead: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 22 } as React.CSSProperties,
@@ -53,6 +54,111 @@ const emptyForm = {
   isPublished: true, churchId: '', eventType: '', modality: 'Presencial',
 };
 
+const BACKEND = 'http://localhost:5215';
+
+function downloadExcel(regs: EventRegistrationDto[], eventTitle: string) {
+  const rows = regs.map(r => ({
+    'Nombre': r.fullName,
+    'Email': r.email ?? '',
+    'Teléfono': r.phone ?? '',
+    'Iglesia': r.church ?? '',
+    'Notas': r.notes ?? '',
+    'Tipo': r.groupId ? 'Grupal' : 'Individual',
+    'Comprobante': r.voucherPath ? `${BACKEND}${r.voucherPath}` : '',
+    'Fecha inscripción': new Date(r.registeredAt).toLocaleString('es'),
+  }));
+  const ws = XLSX.utils.json_to_sheet(rows);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Inscritos');
+  XLSX.writeFile(wb, `inscritos_${eventTitle.replace(/\s+/g, '_')}.xlsx`);
+}
+
+function RegistrationsModal({ event, onClose }: { event: Event; onClose: () => void }) {
+  const { data: regs = [], isLoading } = useQuery<EventRegistrationDto[]>({
+    queryKey: ['registrations', event.id],
+    queryFn: () => eventsApi.getRegistrations(event.id),
+  });
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '40px 16px', overflowY: 'auto' }}>
+      <div style={{ background: 'white', borderRadius: 14, width: '100%', maxWidth: 900, boxShadow: '0 20px 60px rgba(0,0,0,0.18)' }}>
+        {/* Header */}
+        <div style={{ padding: '18px 24px', borderBottom: '1px solid #E2E2E2', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <div>
+            <div style={{ fontFamily: "'Fraunces', serif", fontSize: 18, fontWeight: 600, color: '#1A1A1A' }}>Personas inscritas</div>
+            <div style={{ fontSize: 12.5, color: '#777', marginTop: 2 }}>{event.title} — {regs.length} inscrito{regs.length !== 1 ? 's' : ''}</div>
+          </div>
+          <div style={{ display: 'flex', gap: 8 }}>
+            {regs.length > 0 && (
+              <button
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 6, background: '#16a34a', color: 'white', fontFamily: 'inherit', fontSize: 12.5, fontWeight: 700, padding: '8px 14px', borderRadius: 8, border: 'none', cursor: 'pointer' }}
+                onClick={() => downloadExcel(regs, event.title)}
+              >
+                <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M6.5 1v7M3.5 5.5L6.5 8.5L9.5 5.5" stroke="white" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/><path d="M2 10h9" stroke="white" strokeWidth="1.4" strokeLinecap="round"/></svg>
+                Descargar Excel
+              </button>
+            )}
+            <button onClick={onClose} style={{ width: 32, height: 32, borderRadius: 8, border: '1.5px solid #E2E2E2', background: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 16, color: '#444' }}>×</button>
+          </div>
+        </div>
+
+        {/* Body */}
+        <div style={{ padding: '20px 24px' }}>
+          {isLoading ? (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: '#ABABAB', fontSize: 13 }}>Cargando inscritos...</div>
+          ) : regs.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: '#ABABAB', fontSize: 13 }}>No hay personas inscritas aún.</div>
+          ) : (
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                <thead>
+                  <tr>
+                    {['Nombre', 'Email', 'Teléfono', 'Iglesia', 'Tipo', 'Comprobante', 'Fecha'].map(h => (
+                      <th key={h} style={{ background: '#F9F9F9', borderBottom: '1px solid #E2E2E2', padding: '9px 14px', textAlign: 'left', fontSize: 11, fontWeight: 700, color: '#777', letterSpacing: 0.5, textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {regs.map(r => (
+                    <tr key={r.id}>
+                      <td style={{ padding: '10px 14px', borderBottom: '1px solid #F3F3F3', fontWeight: 600, color: '#1A1A1A' }}>{r.fullName}</td>
+                      <td style={{ padding: '10px 14px', borderBottom: '1px solid #F3F3F3', color: '#444' }}>{r.email || '—'}</td>
+                      <td style={{ padding: '10px 14px', borderBottom: '1px solid #F3F3F3', color: '#444' }}>{r.phone || '—'}</td>
+                      <td style={{ padding: '10px 14px', borderBottom: '1px solid #F3F3F3', color: '#444' }}>{r.church || '—'}</td>
+                      <td style={{ padding: '10px 14px', borderBottom: '1px solid #F3F3F3' }}>
+                        {r.groupId
+                          ? <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 20, background: '#EDE9FE', color: '#5B21B6' }}>Grupal</span>
+                          : <span style={{ fontSize: 10, fontWeight: 700, padding: '3px 8px', borderRadius: 20, background: '#E6F7F8', color: '#00818C' }}>Individual</span>}
+                      </td>
+                      <td style={{ padding: '10px 14px', borderBottom: '1px solid #F3F3F3' }}>
+                        {r.voucherPath ? (
+                          <a
+                            href={`${BACKEND}${r.voucherPath}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: 5, color: '#0098A6', fontWeight: 600, fontSize: 12, textDecoration: 'none' }}
+                          >
+                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M6 1v6M3.5 4.5L6 7l2.5-2.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round"/><path d="M2 9.5h8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg>
+                            Ver foto
+                          </a>
+                        ) : <span style={{ color: '#ABABAB' }}>—</span>}
+                      </td>
+                      <td style={{ padding: '10px 14px', borderBottom: '1px solid #F3F3F3', color: '#777', whiteSpace: 'nowrap' }}>
+                        {new Date(r.registeredAt).toLocaleString('es', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function evStatus(ev: Event): string {
   if (!ev.isPublished) return 'draft';
   if (ev.maxAttendees && ev.currentAttendees >= ev.maxAttendees) return 'full';
@@ -82,6 +188,7 @@ export default function AdminEventsPage() {
   const [imagePreview, setImagePreview] = useState('');
   const [uploadingImage, setUploadingImage] = useState(false);
   const imageInputRef = useRef<HTMLInputElement>(null);
+  const [viewingRegistrations, setViewingRegistrations] = useState<Event | null>(null);
 
   const { data: events = [] } = useQuery({
     queryKey: ['events-admin'],
@@ -407,6 +514,9 @@ export default function AdminEventsPage() {
   // ── LIST VIEW ──────────────────────────────────────────────────────────────
   return (
     <div>
+      {viewingRegistrations && (
+        <RegistrationsModal event={viewingRegistrations} onClose={() => setViewingRegistrations(null)} />
+      )}
       <div style={s.pageHead}>
         <div>
           <h1 style={s.h1}>Eventos</h1>
@@ -459,6 +569,11 @@ export default function AdminEventsPage() {
                 <td style={s.td}><StatusBadge ev={ev} /></td>
                 <td style={s.td} onClick={e => e.stopPropagation()}>
                   <div style={{ display: 'flex', gap: 6 }}>
+                    {ev.allowsRegistration && (
+                      <button style={{ ...s.actBtn, borderColor: '#0098A6', color: '#0098A6' }} onClick={() => setViewingRegistrations(ev)} title="Ver inscritos">
+                        <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><ellipse cx="6.5" cy="6.5" rx="5" ry="3.5" stroke="currentColor" strokeWidth="1.3"/><circle cx="6.5" cy="6.5" r="1.5" fill="currentColor"/></svg>
+                      </button>
+                    )}
                     <button style={s.actBtn} onClick={() => openEdit(ev)} title="Editar"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M9 2L11 4L4.5 10.5H2.5V8.5L9 2Z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round"/></svg></button>
                     <button style={s.actBtn} onClick={() => { if (confirm('¿Eliminar evento?')) remove(ev.id); }} title="Eliminar"><svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2 3.5H11M4.5 3.5V2.5H8.5V3.5M5 6V10M8 6V10" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round"/></svg></button>
                   </div>
